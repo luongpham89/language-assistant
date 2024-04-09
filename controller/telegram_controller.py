@@ -25,6 +25,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 AZURE_KEY = os.getenv("AZURE_KEY")
+AI_KEY = os.getenv("AI_KEY")
 
 
 class TelegramController:
@@ -67,6 +68,33 @@ class TelegramController:
         func(update, context)
 
     def call_api(self, from_lang, to_lang, msg):
+        return_msg=""
+        # ChatGPT
+        files = {
+            "file": (None, ""),
+            "request": (
+                None,
+                json.dumps(
+                    {
+                        "input": msg,
+                        "source": from_lang,
+                        "target": to_lang,
+                        "tool": "ChatGPT",
+                        "stream": False,
+                    }
+                ),
+            ),
+        }
+        res = requests.post(
+            "https://ai-api.playgroundx.site/translation/translate_long",
+            headers={
+                "accept": "application/json",
+                "Authorization": f"Bearer {AI_KEY}"
+            },
+            files=files
+        )
+        if res.status_code == 200:
+            return_msg += f"""<i>(ChatGPT)</i> {res.json()["data"]["translation"]}\n"""
         res = requests.post(
             f"https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from={from_lang}&to={to_lang}",
             headers={
@@ -79,39 +107,8 @@ class TelegramController:
         if res.status_code == 200:
             data = res.json()
             if len(data):
-                return data[0]["translations"][0]["text"]
-        return None
-        
-
-        # ChatGPT
-        # files = {
-        #     "file": (None, ""),
-        #     "request": (
-        #         None,
-        #         json.dumps(
-        #             {
-        #                 "input": msg,
-        #                 "source": from_lang,
-        #                 "target": to_lang,
-        #                 "tool": "ChatGPT",
-        #                 "stream": False,
-        #             }
-        #         ),
-        #     ),
-        # }
-        # res = requests.post(
-        #     "https://ai-api.playgroundx.site/translation/translate_long",
-        #     headers={
-        #         "accept": "application/json",
-        #         "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjQ4NTY2ODIxMjQsInVzZXJfaWQiOiIxIn0.4zeYyR-2Y6yhmrk-47eIZpJzJ5fWXyK7tdTmClpoms0"
-        #     },
-        #     files=files
-        # )
-        # print(res.text)
-        # if res.status_code == 200:
-        #     return res.json()["data"]["translation"]
-
-        # return None
+                return_msg += f"""-----\n<i>(Microsoft)</i> {data[0]["translations"][0]["text"]}\n"""
+        return return_msg
 
     def translate(self, update: Update, context: CallbackContext):
         
@@ -132,10 +129,12 @@ class TelegramController:
             msg = context.bot.send_message(update.effective_chat.id, "Translating...")
             translated = self.call_api(lang, to_lang, ori_message)
             if translated:
-                new_message = f"""{update.effective_user.first_name}: {translated}"""
+                new_message = f"""<b>{update.effective_user.first_name}</b> \n{translated}"""
                 context.bot.edit_message_text(chat_id=update.message.chat_id,
                                     message_id=msg.message_id, 
-                                    text=new_message)
+                                    text=new_message,
+                                    parse_mode=ParseMode.HTML
+                                    )
             else:
                 context.bot.delete_message(msg)
     

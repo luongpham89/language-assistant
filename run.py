@@ -24,6 +24,7 @@ import pytz
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 LOG_LEVEL = os.getenv("LOG_LEVEL")
+ALLOW_GROUPS = json.loads(os.getenv("ALLOW_GROUPS"))
 
 signal = ""
 _common = CommonLibs()
@@ -35,7 +36,7 @@ __telegram_controller = TelegramController(telegram_bot, _log)
 def restricted(func):
     @wraps(func)
     def wrapped(update: Update, context, *args, **kwargs):
-        if update.effective_chat.id in [-1002073035751]:
+        if update.effective_chat.id in ALLOW_GROUPS:
             return func(update, context, *args, **kwargs)
         
         return
