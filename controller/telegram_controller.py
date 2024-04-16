@@ -22,10 +22,12 @@ from dateutil.relativedelta import relativedelta
 from langdetect import detect
 import requests
 from dotenv import load_dotenv
+from deep_translator import (GoogleTranslator, LingueeTranslator, QcriTranslator)
 
 load_dotenv()
 AZURE_KEY = os.getenv("AZURE_KEY")
 AI_KEY = os.getenv("AI_KEY")
+QCRI_API_KEY = os.getenv("QCRI_API_KEY")
 
 
 class TelegramController:
@@ -95,19 +97,27 @@ class TelegramController:
         )
         if res.status_code == 200:
             return_msg += f"""<i>(ChatGPT)</i> {res.json()["data"]["translation"]}\n"""
-        res = requests.post(
-            f"https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from={from_lang}&to={to_lang}",
-            headers={
-                "Content-Type": "application/json; charset=UTF-8",
-                "Ocp-Apim-Subscription-Key": f"{AZURE_KEY}",
-                "Ocp-Apim-Subscription-Region": "koreacentral"
-            },
-            json=[{"Text": msg}]
-        )
-        if res.status_code == 200:
-            data = res.json()
-            if len(data):
-                return_msg += f"""-----\n<i>(Microsoft)</i> {data[0]["translations"][0]["text"]}\n"""
+            
+        # res = requests.post(
+        #     f"https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from={from_lang}&to={to_lang}",
+        #     headers={
+        #         "Content-Type": "application/json; charset=UTF-8",
+        #         "Ocp-Apim-Subscription-Key": f"{AZURE_KEY}",
+        #         "Ocp-Apim-Subscription-Region": "koreacentral"
+        #     },
+        #     json=[{"Text": msg}]
+        # )
+        # if res.status_code == 200:
+        #     data = res.json()
+        #     if len(data):
+        #         return_msg += f"""-----\n<i>(Microsoft)</i> {data[0]["translations"][0]["text"]}\n"""
+        # Google
+        try:
+            translated = GoogleTranslator(source='auto', target=to_lang).translate(msg)
+            return_msg += f"""-----\n<i>(Google)</i> {translated}\n"""
+        except:
+            pass
+        
         return return_msg
 
     def translate(self, update: Update, context: CallbackContext):
